@@ -128,31 +128,63 @@ def expand_concept_prompt(client: genai.Client, purpose: str, concept: Concept, 
     )
     return response.text.strip()
 
-def generate_marketing_image(client: genai.Client, prompt: str, aspect_ratio: str = "1:1") -> Image.Image:
+def generate_marketing_image_pollinations(prompt: str, aspect_ratio: str = "1:1") -> Image.Image:
     """
-    Generates an image using Imagen 4.0 via the Gemini API.
-    If generation fails (e.g. because the API key is on the free tier),
-    falls back to generating a beautiful placeholder graphic programmatically using Pillow.
+    Generates an image for free using Pollinations.ai (Flux model).
+    """
+    import urllib.parse
+    import requests
+    from io import BytesIO
+    
+    ratio_map = {
+        "1:1": (1024, 1024),
+        "3:4": (768, 1024),
+        "4:3": (1024, 768),
+        "9:16": (576, 1024),
+        "16:9": (1024, 576)
+    }
+    w, h = ratio_map.get(aspect_ratio, (1024, 1024))
+    
+    encoded_prompt = urllib.parse.quote(prompt)
+    url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={w}&height={h}&nologo=true"
+    
+    response = requests.get(url, timeout=45)
+    if response.status_code == 200:
+        return Image.open(BytesIO(response.content))
+    else:
+        raise ValueError(f"Pollinations.ai returned status code {response.status_code}")
+
+def generate_marketing_image(client: genai.Client, prompt: str, aspect_ratio: str = "1:1", provider: str = "Google Imagen 4.0") -> Image.Image:
+    """
+    Generates an image using either Google Imagen 4.0 (requires paid plan)
+    or Pollinations AI (completely free open-source Flux model).
+    If both fail, falls back to generating a beautiful placeholder graphic programmatically using Pillow.
     """
     # Map input aspect ratio to Imagen allowed formats: "1:1", "3:4", "4:3", "9:16", "16:9"
     allowed_ratios = ["1:1", "3:4", "4:3", "9:16", "16:9"]
     if aspect_ratio not in allowed_ratios:
         aspect_ratio = "1:1"
         
-    try:
-        response = client.models.generate_images(
-            model="imagen-4.0-generate-001",
-            prompt=prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio=aspect_ratio,
-                output_mime_type="image/png"
+    if provider == "Pollinations AI (Flux) - FREE":
+        try:
+            return generate_marketing_image_pollinations(prompt, aspect_ratio)
+        except Exception as e:
+            print(f"Pollinations.ai Generation failed: {e}. Falling back to placeholder.")
+    else:
+        try:
+            response = client.models.generate_images(
+                model="imagen-4.0-generate-001",
+                prompt=prompt,
+                config=types.GenerateImagesConfig(
+                    number_of_images=1,
+                    aspect_ratio=aspect_ratio,
+                    output_mime_type="image/png"
+                )
             )
-        )
-        if response.generated_images:
-            return response.generated_images[0].image
-    except Exception as e:
-        print(f"Imagen Generation failed: {e}. Falling back to programmatically generated graphic.")
+            if response.generated_images:
+                return response.generated_images[0].image
+        except Exception as e:
+            print(f"Imagen Generation failed: {e}. Falling back to programmatically generated graphic.")
         
     # Fallback placeholder generation using Pillow
     # Determine canvas size based on aspect ratio

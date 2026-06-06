@@ -415,18 +415,26 @@ elif st.session_state.step == 3:
     elif abs(ratio_float - 1.77) < 0.05:
         aspect_ratio_option = "16:9"
         
-    st.markdown(f"**Auto-Selected Imagen Aspect Ratio (matched to background): {aspect_ratio_option}**")
+    st.markdown(f"**Auto-Selected Aspect Ratio (matched to background): {aspect_ratio_option}**")
     
     st.markdown("---")
     
+    image_provider = st.radio(
+        "Select AI Image Generation Engine",
+        ["Pollinations AI (Flux) - FREE", "Google Imagen 4.0 (Requires Paid Key)"],
+        index=0,
+        help="Pollinations AI uses the open-source Flux model, completely free with no API limits. Google Imagen 4.0 is premium but requires billing enabled on your key."
+    )
+    
     # Generate button
-    if st.button("🚀 Generate Artwork with Imagen 3"):
-        with st.spinner("✨ Imagen 3 is rendering your custom artwork (takes ~10 seconds)..."):
+    if st.button("🚀 Generate AI Artwork"):
+        with st.spinner("✨ Rendering your custom artwork (takes ~5-10 seconds)..."):
             try:
                 gen_img = generate_marketing_image(
                     client,
                     st.session_state.refined_prompt,
-                    aspect_ratio_option
+                    aspect_ratio_option,
+                    provider=image_provider
                 )
                 st.session_state.generated_image = gen_img
                 st.success("Image generated successfully!")
