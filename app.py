@@ -419,13 +419,6 @@ elif st.session_state.step == 3:
     
     st.markdown("---")
     
-    image_provider = st.radio(
-        "Select AI Image Generation Engine",
-        ["Pollinations AI (Flux) - FREE", "Google Imagen 4.0 (Requires Paid Key)"],
-        index=0,
-        help="Pollinations AI uses the open-source Flux model, completely free with no API limits. Google Imagen 4.0 is premium but requires billing enabled on your key."
-    )
-    
     # Generate button
     if st.button("🚀 Generate AI Artwork"):
         with st.spinner("✨ Rendering your custom artwork (takes ~5-10 seconds)..."):
@@ -433,8 +426,7 @@ elif st.session_state.step == 3:
                 gen_img = generate_marketing_image(
                     client,
                     st.session_state.refined_prompt,
-                    aspect_ratio_option,
-                    provider=image_provider
+                    aspect_ratio_option
                 )
                 st.session_state.generated_image = gen_img
                 st.success("Image generated successfully!")

@@ -154,111 +154,17 @@ def generate_marketing_image_pollinations(prompt: str, aspect_ratio: str = "1:1"
     else:
         raise ValueError(f"Pollinations.ai returned status code {response.status_code}")
 
-def generate_marketing_image(client: genai.Client, prompt: str, aspect_ratio: str = "1:1", provider: str = "Google Imagen 4.0") -> Image.Image:
+def generate_marketing_image(client: genai.Client, prompt: str, aspect_ratio: str = "1:1") -> Image.Image:
     """
-    Generates an image using either Google Imagen 4.0 (requires paid plan)
-    or Pollinations AI (completely free open-source Flux model).
-    If both fail, falls back to generating a beautiful placeholder graphic programmatically using Pillow.
+    Generates an image using Pollinations AI (completely free open-source Flux model).
     """
-    # Map input aspect ratio to Imagen allowed formats: "1:1", "3:4", "4:3", "9:16", "16:9"
+    # Map input aspect ratio to allowed formats: "1:1", "3:4", "4:3", "9:16", "16:9"
     allowed_ratios = ["1:1", "3:4", "4:3", "9:16", "16:9"]
     if aspect_ratio not in allowed_ratios:
         aspect_ratio = "1:1"
         
-    if provider == "Pollinations AI (Flux) - FREE":
-        try:
-            return generate_marketing_image_pollinations(prompt, aspect_ratio)
-        except Exception as e:
-            print(f"Pollinations.ai Generation failed: {e}. Falling back to placeholder.")
-    else:
-        try:
-            response = client.models.generate_images(
-                model="imagen-4.0-generate-001",
-                prompt=prompt,
-                config=types.GenerateImagesConfig(
-                    number_of_images=1,
-                    aspect_ratio=aspect_ratio,
-                    output_mime_type="image/png"
-                )
-            )
-            if response.generated_images:
-                return response.generated_images[0].image
-        except Exception as e:
-            print(f"Imagen Generation failed: {e}. Falling back to programmatically generated graphic.")
-        
-    # Fallback placeholder generation using Pillow
-    # Determine canvas size based on aspect ratio
-    ratio_map = {
-        "1:1": (1024, 1024),
-        "3:4": (768, 1024),
-        "4:3": (1024, 768),
-        "9:16": (576, 1024),
-        "16:9": (1024, 576)
-    }
-    w, h = ratio_map.get(aspect_ratio, (1024, 1024))
+    return generate_marketing_image_pollinations(prompt, aspect_ratio)
     
-    # Create a gorgeous gradient graphic
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 255))
-    draw = ImageDraw.Draw(img)
-    
-    # Elegant blue-to-indigo gradient
-    for y in range(h):
-        r = int(15 + (40 - 15) * (y / h))
-        g = int(23 + (20 - 23) * (y / h))
-        b = int(42 + (90 - 42) * (y / h))
-        draw.line([(0, y), (w, y)], fill=(r, g, b, 255))
-        
-    # Draw decorative soft abstract circles in corners
-    glow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    glow_draw = ImageDraw.Draw(glow)
-    glow_draw.ellipse([(int(w*0.1), int(h*0.1)), (int(w*0.9), int(h*0.9))], fill=(255, 46, 147, 25))
-    glow = glow.filter(ImageFilter.GaussianBlur(100))
-    img = Image.alpha_composite(img, glow)
-    
-    # Draw simple elegant badge overlay in center
-    draw_final = ImageDraw.Draw(img)
-    center_w, center_h = w // 2, h // 2
-    
-    # Rounded center frame
-    frame_w, frame_h = int(w * 0.8), int(h * 0.6)
-    fx1 = center_w - frame_w // 2
-    fy1 = center_h - frame_h // 2
-    fx2 = center_w + frame_w // 2
-    fy2 = center_h + frame_h // 2
-    
-    draw_final.rounded_rectangle([fx1, fy1, fx2, fy2], radius=24, outline=(212, 175, 55, 120), width=4)
-    
-    # Load fonts
-    try:
-        from PIL import ImageFont
-        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 36)
-        sub_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 20)
-    except Exception:
-        try:
-            from PIL import ImageFont
-            font = ImageFont.load_default()
-            sub_font = ImageFont.load_default()
-        except Exception:
-            font = None
-            sub_font = None
-
-    # Write text onto canvas
-    headline = "AI Concept Visual"
-    sub_text = "Free Tier API Key active. Artwork placeholder layout."
-    
-    if font:
-        # Draw headline
-        draw_final.text((center_w, center_h - 40), headline, fill=(255, 255, 255, 220), anchor="mm", font=font)
-        # Draw prompt description summary (first 75 chars)
-        prompt_summary = (prompt[:75] + '...') if len(prompt) > 75 else prompt
-        draw_final.text((center_w, center_h + 20), prompt_summary, fill=(212, 175, 55, 220), anchor="mm", font=sub_font)
-        draw_final.text((center_w, center_h + 60), sub_text, fill=(160, 160, 160, 200), anchor="mm", font=sub_font)
-    else:
-        draw_final.text((center_w - 50, center_h - 20), headline, fill=(255, 255, 255, 255))
-        draw_final.text((center_w - 150, center_h + 20), sub_text, fill=(200, 200, 200, 255))
-        
-    return img
-
 # ---------------------------------------------------------------------------
 # Pillow Image Processing & Layout Merging
 # ---------------------------------------------------------------------------
