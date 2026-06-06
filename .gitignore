@@ -1,0 +1,19 @@
+# Private startup scripts & keys
+run.sh
+.env
+.streamlit/
+
+# Temporary generated test output images
+assets/test_generated_image.png
+assets/custom_background_test_output.png
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
