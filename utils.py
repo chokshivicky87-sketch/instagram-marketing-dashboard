@@ -148,13 +148,33 @@ def generate_marketing_image_pollinations(prompt: str, aspect_ratio: str = "1:1"
     # Truncate prompt to 200 characters to avoid URL length/402/414 limits on the free API
     safe_prompt = prompt[:200] if len(prompt) > 200 else prompt
     encoded_prompt = urllib.parse.quote(safe_prompt)
-    url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={w}&height={h}&nologo=true"
     
-    response = requests.get(url, timeout=45)
-    if response.status_code == 200:
-        return Image.open(BytesIO(response.content))
-    else:
-        raise ValueError(f"Pollinations.ai returned status code {response.status_code}. Try using a shorter prompt.")
+    # Try the newer gen.pollinations.ai endpoint first
+    url1 = f"https://gen.pollinations.ai/image/{encoded_prompt}?width={w}&height={h}&nologo=true"
+    # Fallback to image.pollinations.ai
+    url2 = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={w}&height={h}&nologo=true"
+    
+    # Browser-mimicking headers to bypass Cloudflare/CDN rate limiters on shared Streamlit Cloud IPs
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Accept": "image/avif,image/webp,image/apng,image/png,image/*,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive"
+    }
+    
+    last_error = None
+    for url in [url1, url2]:
+        try:
+            response = requests.get(url, headers=headers, timeout=40)
+            if response.status_code == 200:
+                return Image.open(BytesIO(response.content))
+            else:
+                last_error = f"Status code {response.status_code} from {urllib.parse.urlparse(url).netloc}"
+        except Exception as e:
+            last_error = str(e)
+            
+    raise ValueError(f"Pollinations.ai failed: {last_error}. Please try again in a moment.")
 
 def generate_marketing_image(client: genai.Client, prompt: str, aspect_ratio: str = "1:1") -> Image.Image:
     """
