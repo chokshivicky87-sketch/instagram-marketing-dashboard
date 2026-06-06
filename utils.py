@@ -181,16 +181,105 @@ def generate_marketing_image_pollinations(prompt: str, aspect_ratio: str = "1:1"
             
     raise ValueError(f"Pollinations.ai failed: {last_error}. Please try again in a moment.")
 
-def generate_marketing_image(client: genai.Client, prompt: str, aspect_ratio: str = "1:1") -> Image.Image:
+def extract_keywords_from_prompt(prompt: str, purpose: str) -> str:
+    """
+    Extracts 2-3 relevant keywords from the prompt to search for high-quality stock images.
+    """
+    import re
+    # Lowercase and clean
+    clean_prompt = re.sub(r'[^a-zA-Z\s]', '', prompt.lower())
+    words = clean_prompt.split()
+    
+    stop_words = {"a", "an", "the", "and", "or", "but", "is", "are", "was", "were", "to", "for", "with", "in", "on", "at", "by", "of", "from", "you", "your", "we", "our", "it", "its"}
+    keywords = [w for w in words if w not in stop_words and len(w) > 2]
+    
+    purpose_map = {
+        "Birthday Wish": ["birthday", "celebration", "balloons"],
+        "Festive Greeting": ["festival", "celebration", "holiday"],
+        "Service Promotion": ["business", "office", "marketing"]
+    }
+    defaults = purpose_map.get(purpose, ["abstract", "background"])
+    
+    selected = []
+    visual_triggers = {"diwali", "christmas", "balloon", "cake", "laptop", "office", "gift", "party", "gold", "sparkle", "workspace", "education", "classroom", "study", "learning", "commerce", "chart"}
+    for w in keywords:
+        if w in visual_triggers and w not in selected:
+            selected.append(w)
+            
+    for w in keywords:
+        if len(selected) >= 3:
+            break
+        if w not in selected:
+            selected.append(w)
+            
+    if not selected:
+        selected = defaults
+        
+    return ",".join(selected[:3])
+
+def generate_marketing_image_stock(prompt: str, aspect_ratio: str = "1:1", purpose: str = "Festive Greeting") -> Image.Image:
+    """
+    Fetches a high-quality relevant stock photo/illustration from LoremFlickr
+    based on keywords extracted from the prompt. Completely free and never blocked.
+    """
+    import requests
+    from io import BytesIO
+    
+    ratio_map = {
+        "1:1": (1024, 1024),
+        "3:4": (768, 1024),
+        "4:3": (1024, 768),
+        "9:16": (576, 1024),
+        "16:9": (1024, 576)
+    }
+    w, h = ratio_map.get(aspect_ratio, (1024, 1024))
+    
+    keywords = extract_keywords_from_prompt(prompt, purpose)
+    url = f"https://loremflickr.com/{w}/{h}/{keywords}?random=42"
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    response = requests.get(url, headers=headers, timeout=20)
+    if response.status_code == 200:
+        return Image.open(BytesIO(response.content))
+    else:
+        raise ValueError(f"LoremFlickr returned status code {response.status_code}")
+
+def generate_marketing_image(client: genai.Client, prompt: str, aspect_ratio: str = "1:1", purpose: str = "Festive Greeting") -> Image.Image:
     """
     Generates an image using Pollinations AI (completely free open-source Flux model).
+    If that fails due to Cloud IP blocking/rate-limiting (returning 402), 
+    it falls back to a high-quality relevant stock photo from LoremFlickr.
+    If even that fails, generates a clean background layout.
     """
-    # Map input aspect ratio to allowed formats: "1:1", "3:4", "4:3", "9:16", "16:9"
-    allowed_ratios = ["1:1", "3:4", "4:3", "9:16", "16:9"]
-    if aspect_ratio not in allowed_ratios:
-        aspect_ratio = "1:1"
-        
-    return generate_marketing_image_pollinations(prompt, aspect_ratio)
+    try:
+        return generate_marketing_image_pollinations(prompt, aspect_ratio)
+    except Exception as e:
+        print(f"Pollinations AI failed ({e}). Falling back to LoremFlickr stock image...")
+        try:
+            return generate_marketing_image_stock(prompt, aspect_ratio, purpose)
+        except Exception as stock_err:
+            print(f"Stock image fallback failed: {stock_err}. Generating clean background gradient.")
+            
+            # Absolute ultimate local fallback: create a nice clean gradient image
+            ratio_map = {
+                "1:1": (1024, 1024),
+                "3:4": (768, 1024),
+                "4:3": (1024, 768),
+                "9:16": (576, 1024),
+                "16:9": (1024, 576)
+            }
+            w, h = ratio_map.get(aspect_ratio, (1024, 1024))
+            img = Image.new("RGBA", (w, h), (0, 0, 0, 255))
+            draw = ImageDraw.Draw(img)
+            for y in range(h):
+                r = int(24 + (30 - 24) * (y / h))
+                g = int(26 + (16 - 26) * (y / h))
+                b = int(48 + (40 - 48) * (y / h))
+                draw.line([(0, y), (w, y)], fill=(r, g, b, 255))
+            return img
     
 # ---------------------------------------------------------------------------
 # Pillow Image Processing & Layout Merging

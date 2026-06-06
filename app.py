@@ -466,7 +466,8 @@ elif st.session_state.step == 3:
                 gen_img = generate_marketing_image(
                     client,
                     st.session_state.refined_prompt,
-                    aspect_ratio_option
+                    aspect_ratio_option,
+                    purpose=st.session_state.purpose
                 )
                 st.session_state.generated_image = gen_img
                 st.success("Image generated successfully!")
