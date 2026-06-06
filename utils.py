@@ -317,7 +317,10 @@ def compose_final_marketing_image(
     blend_ratio: float = 0.5,
     overlay_photo: Image.Image = None,
     photo_coords: tuple[int, int] = (340, 340), # Default center-ish for 1080x1080
-    photo_scale: float = 1.0
+    photo_scale: float = 1.0,
+    header_margin: int = 180,
+    footer_margin: int = 150,
+    side_margin: int = 20
 ) -> Image.Image:
     """
     Assembles the final graphic:
@@ -353,6 +356,18 @@ def compose_final_marketing_image(
         composite.paste(frame_shadow, (margin - 3, margin - 1), mask=frame_shadow.split()[3])
         
         composite.paste(ai_centered, (margin, margin), mask=ai_centered.split()[3])
+    elif composition_style == "Fit AI Image in Content Area (Preserve Header/Footer)":
+        # AI image is scaled and positioned specifically to sit inside the white space of a letterhead
+        ai_w = bg_w - side_margin * 2
+        ai_h = bg_h - header_margin - footer_margin
+        
+        ai_w = max(10, ai_w)
+        ai_h = max(10, ai_h)
+        
+        ai_centered = ai_image.resize((ai_w, ai_h), Image.Resampling.LANCZOS).convert("RGBA")
+        
+        composite = bg_img.copy()
+        composite.paste(ai_centered, (side_margin, header_margin), mask=ai_centered.split()[3])
     else: # "Overlay AI Image on Background"
         # The AI image is overlaid on top of the background.png
         composite = Image.alpha_composite(bg_img, ai_resized)

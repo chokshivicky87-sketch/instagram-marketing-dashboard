@@ -466,14 +466,32 @@ elif st.session_state.step == 4:
         
         comp_style = st.selectbox(
             "Composition Mode",
-            ["Background Frame Overlay", "Blend (Adjustable Opacity)", "AI Image Framed in Center", "Overlay AI Image on Background"],
+            [
+                "Fit AI Image in Content Area (Preserve Header/Footer)",
+                "Background Frame Overlay", 
+                "Blend (Adjustable Opacity)", 
+                "AI Image Framed in Center", 
+                "Overlay AI Image on Background"
+            ],
             index=0,
-            help="Background Frame Overlay: AI image sits under background template (useful if template has transparent center and graphic borders/logo). Blend: Fuses both images. Framed: Fits the AI image in the center. Overlay: Pastes AI image directly over the background."
+            help="Fit AI Image: Fits the graphic into the middle white-space of the letterhead. Background Frame Overlay: AI image sits under background template (requires template to have transparent center). Blend: Fuses both images. Framed: Fits AI image in center. Overlay: Pastes AI image over background."
         )
         
         blend_ratio = 0.5
+        header_margin = 180
+        footer_margin = 150
+        side_margin = 20
+        
         if comp_style == "Blend (Adjustable Opacity)":
             blend_ratio = st.slider("Background / AI Blend Ratio", 0.0, 1.0, 0.5, 0.05, help="0.0 = Background only, 1.0 = AI image only.")
+        elif comp_style == "Fit AI Image in Content Area (Preserve Header/Footer)":
+            col_m1, col_m2, col_m3 = st.columns(3)
+            with col_m1:
+                header_margin = st.slider("Header Margin (px)", 0, bg_h // 2, 180, 10, help="Space to reserve for the logo/header at the top.")
+            with col_m2:
+                footer_margin = st.slider("Footer Margin (px)", 0, bg_h // 2, 150, 10, help="Space to reserve for contact info/footer at the bottom.")
+            with col_m3:
+                side_margin = st.slider("Side Margin (px)", 0, bg_w // 2, 20, 5, help="Space to reserve on left/right edges.")
             
         st.markdown('</div>', unsafe_allow_html=True)
         
@@ -560,7 +578,10 @@ elif st.session_state.step == 4:
                 blend_ratio=blend_ratio,
                 overlay_photo=processed_photo,
                 photo_coords=(pos_x, pos_y),
-                photo_scale=photo_scale
+                photo_scale=photo_scale,
+                header_margin=header_margin,
+                footer_margin=footer_margin,
+                side_margin=side_margin
             )
             st.session_state.composite_image = composite
             st.image(composite, caption=f"Live Composite Canvas ({bg_w} x {bg_h})", use_container_width=True)
