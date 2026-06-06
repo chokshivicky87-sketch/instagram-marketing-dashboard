@@ -145,14 +145,16 @@ def generate_marketing_image_pollinations(prompt: str, aspect_ratio: str = "1:1"
     }
     w, h = ratio_map.get(aspect_ratio, (1024, 1024))
     
-    encoded_prompt = urllib.parse.quote(prompt)
+    # Truncate prompt to 200 characters to avoid URL length/402/414 limits on the free API
+    safe_prompt = prompt[:200] if len(prompt) > 200 else prompt
+    encoded_prompt = urllib.parse.quote(safe_prompt)
     url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={w}&height={h}&nologo=true"
     
     response = requests.get(url, timeout=45)
     if response.status_code == 200:
         return Image.open(BytesIO(response.content))
     else:
-        raise ValueError(f"Pollinations.ai returned status code {response.status_code}")
+        raise ValueError(f"Pollinations.ai returned status code {response.status_code}. Try using a shorter prompt.")
 
 def generate_marketing_image(client: genai.Client, prompt: str, aspect_ratio: str = "1:1") -> Image.Image:
     """
