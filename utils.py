@@ -154,13 +154,18 @@ def generate_marketing_image_pollinations(prompt: str, aspect_ratio: str = "1:1"
     # Fallback to image.pollinations.ai
     url2 = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={w}&height={h}&nologo=true"
     
-    # Browser-mimicking headers to bypass Cloudflare/CDN rate limiters on shared Streamlit Cloud IPs
+    # Browser-mimicking headers to bypass Cloudflare/CDN bot rate limiters on shared Streamlit Cloud IPs
     headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "image/avif,image/webp,image/apng,image/png,image/*,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive"
+        "Connection": "keep-alive",
+        "Referer": "https://pollinations.ai/",
+        "Origin": "https://pollinations.ai/",
+        "Sec-Fetch-Dest": "image",
+        "Sec-Fetch-Mode": "no-cors",
+        "Sec-Fetch-Site": "same-site"
     }
     
     last_error = None
