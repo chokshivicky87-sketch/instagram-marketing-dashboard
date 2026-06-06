@@ -284,27 +284,67 @@ if st.session_state.step == 1:
             help="Upload a portrait photo. Pillow will crop it elegantly and place it over the generated artwork."
         )
         
+    st.markdown("---")
+    skip_brainstorm = st.checkbox(
+        "⚡ Manual Mode: Skip AI Brainstorming",
+        value=st.session_state.get("skip_brainstorm", False),
+        help="Check this if you want to type your image prompt directly and bypass Gemini API key rate limits."
+    )
+    
+    manual_prompt = st.session_state.get("manual_prompt", "")
+    if skip_brainstorm:
+        manual_prompt = st.text_area(
+            "Enter Image Generation Prompt",
+            value=manual_prompt,
+            placeholder="e.g. A beautiful corporate birthday backdrop with floating gold balloons, abstract confetti, and clean modern frames",
+            help="Describe the artwork you want to generate."
+        )
+        
     # Save inputs to session state
     st.session_state.user_input = user_input
     st.session_state.birthday_name = birthday_name
     st.session_state.birthday_wishes = birthday_wishes
     st.session_state.uploaded_photo_raw = uploaded_photo
+    st.session_state.skip_brainstorm = skip_brainstorm
+    st.session_state.manual_prompt = manual_prompt
 
     st.markdown('</div>', unsafe_allow_html=True)
     
     # Navigation
     col_prev, col_next = st.columns([1, 8])
-    if col_next.button("Next: Brainstorm Concepts ➡️"):
+    button_label = "Next: Generate Artwork ➡️" if skip_brainstorm else "Next: Brainstorm Concepts ➡️"
+    
+    if col_next.button(button_label):
         # Validate inputs
-        if not client:
-            st.error("API Key must be configured to proceed.")
-        elif purpose in ["Festive Greeting", "Service Promotion"] and not user_input.strip():
-            st.error("Please provide a description/features to brainstorm.")
-        elif purpose == "Birthday Wish" and not birthday_name.strip():
-            st.error("Please provide the team member's name.")
+        if skip_brainstorm:
+            if not manual_prompt.strip():
+                st.error("Please enter an image prompt.")
+            elif purpose == "Birthday Wish" and not birthday_name.strip():
+                st.error("Please provide the team member's name.")
+            else:
+                st.session_state.refined_prompt = manual_prompt
+                # Mock a concept for Step 5 download page to prevent errors
+                from utils import Concept
+                st.session_state.concepts = [
+                    Concept(
+                        headline="Custom Post",
+                        visual_description=manual_prompt,
+                        caption=f"Wishing a very Happy Birthday to {birthday_name}! 🎂 We are so grateful to have you on the team. {birthday_wishes} #team #birthday" if purpose == "Birthday Wish" else f"Introducing our latest service: {user_input}! 🚀 Contact us today for details. #business #growth"
+                    )
+                ]
+                st.session_state.selected_concept_idx = 0
+                st.session_state.step = 3
+                st.rerun()
         else:
-            st.session_state.step = 2
-            st.rerun()
+            if not client:
+                st.error("API Key must be configured in the sidebar to proceed.")
+            elif purpose in ["Festive Greeting", "Service Promotion"] and not user_input.strip():
+                st.error("Please provide a description/features to brainstorm.")
+            elif purpose == "Birthday Wish" and not birthday_name.strip():
+                st.error("Please provide the team member's name.")
+            else:
+                st.session_state.step = 2
+                st.rerun()
 
 # ---------------------------------------------------------------------------
 # Step 2: Brainstorming & Concept Selection (Gemini API)
@@ -443,7 +483,10 @@ elif st.session_state.step == 3:
     # Navigation
     col_prev, col_next = st.columns([1, 8])
     if col_prev.button("⬅️ Back"):
-        st.session_state.step = 2
+        if st.session_state.get("skip_brainstorm", False):
+            st.session_state.step = 1
+        else:
+            st.session_state.step = 2
         st.rerun()
     if col_next.button("Next: Layout & Merge ➡️"):
         if not st.session_state.generated_image:
